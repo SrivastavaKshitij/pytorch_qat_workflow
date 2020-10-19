@@ -36,7 +36,7 @@ python train.py --m cnn --netqat --partial_ckpt --load_ckpt /tmp/pytorch_exp/ckp
 ```
 
 #### Pointers
-
+*For QAT retraining*
 1. I tried lowering the learning rate to `1e-5` and even then i run into the error
 2. I usually train for 30 epochs. If I load `26th checkpoint` or a ckpt from the later stage of the training when the model has almost converged, I get the error in the first epoch of retraining
 3. If I load a checkpoint from early stages of training; `checkpoint <= 10`, then I can retrain for `4-5 epochs` but still run into the same error
