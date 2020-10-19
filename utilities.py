@@ -108,29 +108,9 @@ class conv(torch.nn.Module):
 
         else:
             self.qconv = ConvBNReLU(in_channels,out_channels,kernel_size,stride,groups)
-            #layer_list=[
-            #        nn.Conv2d(in_channels=in_channels,
-            #            out_channels=out_channels,
-            #            kernel_size=kernel_size,
-            #            padding=padding,
-            #            bias=bias,
-            #            groups=groups)]
-            #if norm:
-            #    layer_list.append(nn.BatchNorm2d(out_channels))
-            
-            #if act:
-            #    layer_list.append(nn.ReLU())
-            
-            #self.qconv = nn.Sequential(*layer_list)
 
     def forward(self,inputs):
         return self.qconv(inputs)
-
-
-
-
-
-
 
 
 def calculate_accuracy(model,data_loader, is_cuda=True):
