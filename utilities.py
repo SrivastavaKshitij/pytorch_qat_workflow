@@ -15,7 +15,7 @@ def map_ckpt_names(model_state_dict):
         if len(k.split('.')) == 4:
             temp = k.replace('.0.','.')
             temp = temp.replace('.1.','.bn.')
-            print("Changing key name from {} to {}".format(k,temp))
+            print("Changing key name from {} ========> {}".format(k,temp))
             new_dict[temp] = v
         else:
             print("Name not changed {}".format(k))
