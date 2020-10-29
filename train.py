@@ -47,21 +47,29 @@ def main():
     train_loader = loaders.train_loader()
     test_loader = loaders.test_loader()
 
-    if args.m == "vanilla_cnn":
-        model = vanilla_cnn()
-    elif args.m == "vanilla_cnn_qat":
-        model = vanilla_cnn_qat()
-    elif args.m == "cnn":
-        if args.netqat:
-            model=cnn(qat_mode=True)
-            torch.quantization.prepare_qat(model,inplace=True)
-        else:
-            model=cnn()
-    elif args.m == "shufflenet":
-        model = models.shufflenet_v2_x1_0(pretrained=False)
-    else:
-        raise NotImplementedError("{} model not found".format(args.m))
+    if args.netqat:
+        base_model = cnn()
+        model=cnn(qat_mode=True)
 
+        ## Loading checkpoints here
+        checkpoint = torch.load(args.load_ckpt)
+
+        ##making sure that the checkpoint was loaded from disk correctly
+        base_model.load_state_dict(checkpoint['model_state_dict'],strict=True)
+        base_model_sd = base_model.state_dict()
+        ##renaming the keys only to match the model with qat nodes. Only convs and BNs's will be changed
+        base_model_sd_new = map_ckpt_names(base_model_sd)
+
+        ##Updating the values of keys for qat model 
+        for k in base_model_sd_new.keys():
+            try:
+                model.state_dict()[k].copy_(base_model_sd_new[k])
+                print("{} successfully loaded".format(k))
+            except:
+                print("{} didnt load".format(k))
+
+    else:
+        model=cnn()
 
     ## Instantiate tensorboard logs
     writer = SummaryWriter(tb_dirname)
@@ -80,27 +88,10 @@ def main():
     best_test_accuracy=0
     print("===>> Training started")
 
-    if args.load_ckpt:
-        model.eval()
-        checkpoint = torch.load(args.load_ckpt)
-        if args.partial_ckpt:
-            model_state = checkpoint['model_state_dict']
-            new_state_dict = map_ckpt_names(checkpoint['model_state_dict'])
-            model.load_state_dict(new_state_dict,strict=False)
-        else:
-            model.load_state_dict(checkpoint['model_state_dict'],strict=True)
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        epoch = checkpoint['epoch']
-        loss = checkpoint['loss']
-        print("===>>> Checkpoint loaded successfully from {} at epoch {} ".format(args.load_ckpt,epoch))
-    if args.qm:
-        #model = torch.quantization.quantize_dynamic(model, {torch.nn.Conv2d}, dtype=torch.qint8)
-        model.eval()
-        model.fuse_model()
-        model.qconfig=torch.quantization.QConfig(activation=torch.quantization.FakeQuantize.with_args(observer=torch.quantization.MovingAverageMinMaxObserver,dtype=torch.quint8,reduce_range=False,qscheme=torch.per_tensor_symmetric,quant_min=0,quant_max=255),weight=torch.quantization.FakeQuantize.with_args(observer=torch.quantization.MovingAverageMinMaxObserver,dtype=torch.qint8,qscheme=torch.per_tensor_symmetric,quant_min=-127,quant_max=127))
-        #model.qconfig=torch.quantization.get_default_qat_qconfig('fbgemm')
-        print(model.qconfig)
-        torch.quantization.prepare_qat(model, inplace=True)
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    epoch = checkpoint['epoch']
+    loss = checkpoint['loss']
+    print("===>>> Checkpoint loaded successfully from {} at epoch {} ".format(args.load_ckpt,epoch))
 
     print(model)
     for epoch in range(args.start_epoch, args.start_epoch + args.num_epochs):
